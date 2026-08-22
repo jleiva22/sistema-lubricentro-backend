@@ -63,3 +63,5 @@ class DetalleOrden extends Model {
     };
   }
 }
+
+export { DETALLE_ORDEN_TABLE, DetalleOrdenSchema, DetalleOrden };
