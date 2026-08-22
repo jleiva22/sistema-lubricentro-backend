@@ -7,6 +7,12 @@ const sanitizeUser = (user) => {
   if (!user) return null;
   const plain = user.toJSON ? user.toJSON() : { ...user };
   delete plain.password_hash;
+
+  // Si viene incluido el perfil_cliente, exponer cliente_id para facilitar checks
+  if (plain.perfil_cliente) {
+    plain.cliente_id = plain.perfil_cliente.id;
+  }
+
   return plain;
 };
 
@@ -64,12 +70,31 @@ export const login = async ({ email, password }) => {
   }
 
   const normalizedEmail = String(email).trim().toLowerCase();
-  const usuario = await models.Usuario.findOne({ where: { email: normalizedEmail } });
+  const usuario = await models.Usuario.findOne({
+    where: { email: normalizedEmail },
+    include: [{ model: models.Cliente, as: 'perfil_cliente' }],
+  });
 
   if (!usuario || !usuario.activo) {
     const error = new Error('Credenciales inválidas');
     error.statusCode = 401;
     throw error;
+  }
+
+  // Si no existe asociación directa con Cliente, intentar resolver por email o usuario_id
+  if (!usuario.perfil_cliente) {
+    let posibleCliente = await models.Cliente.findOne({ where: { usuario_id: usuario.id } });
+    if (!posibleCliente) {
+      posibleCliente = await models.Cliente.findOne({ where: { email: usuario.email } });
+    }
+
+    // Si sigue sin existir, intentar por PK (posible coincidencia de ids en datos seed)
+    if (!posibleCliente) {
+      const clienteByPk = await models.Cliente.findByPk(usuario.id);
+      if (clienteByPk) posibleCliente = clienteByPk;
+    }
+
+    if (posibleCliente) usuario.perfil_cliente = posibleCliente;
   }
 
   const passwordMatches = await bcrypt.compare(String(password), usuario.password_hash);
@@ -83,8 +108,14 @@ export const login = async ({ email, password }) => {
   const accessToken = createAccessToken(usuario);
   const refreshToken = createRefreshToken(usuario);
 
+  // Construir objeto plano para asegurar que perfil_cliente se incluya correctamente
+  const plainUsuario = usuario.toJSON ? usuario.toJSON() : { ...usuario };
+  if (usuario.perfil_cliente) {
+    plainUsuario.perfil_cliente = usuario.perfil_cliente.toJSON ? usuario.perfil_cliente.toJSON() : usuario.perfil_cliente;
+  }
+
   return {
-    usuario: sanitizeUser(usuario),
+    usuario: sanitizeUser(plainUsuario),
     accessToken,
     refreshToken,
   };
@@ -99,7 +130,20 @@ export const refreshAccessToken = async (refreshTokenValue) => {
 
   try {
     const payload = jwt.verify(refreshTokenValue, authConfig.refreshSecret);
-    const usuario = await models.Usuario.findByPk(payload.sub);
+    const usuario = await models.Usuario.findByPk(payload.sub, {
+      include: [{ model: models.Cliente, as: 'perfil_cliente' }],
+    });
+
+    // Intentar resolver Cliente si no viene incluido
+    if (usuario && !usuario.perfil_cliente) {
+      let posibleCliente = await models.Cliente.findOne({ where: { usuario_id: usuario.id } });
+      if (!posibleCliente) posibleCliente = await models.Cliente.findOne({ where: { email: usuario.email } });
+      if (!posibleCliente) {
+        const clienteByPk = await models.Cliente.findByPk(usuario.id);
+        if (clienteByPk) posibleCliente = clienteByPk;
+      }
+      if (posibleCliente) usuario.perfil_cliente = posibleCliente;
+    }
 
     if (!usuario || !usuario.activo) {
       const error = new Error('Sesión inválida');
@@ -111,7 +155,7 @@ export const refreshAccessToken = async (refreshTokenValue) => {
     const nextRefreshToken = createRefreshToken(usuario);
 
     return {
-      usuario: sanitizeUser(usuario),
+      usuario: sanitizeUser(usuario.toJSON ? usuario.toJSON() : usuario),
       accessToken,
       refreshToken: nextRefreshToken,
     };
@@ -123,12 +167,38 @@ export const refreshAccessToken = async (refreshTokenValue) => {
 };
 
 export const getAuthenticatedUser = async (userId) => {
-  const usuario = await models.Usuario.findByPk(userId);
+  const usuario = await models.Usuario.findByPk(userId, {
+    include: [{ model: models.Cliente, as: 'perfil_cliente' }],
+  });
+
+  if (usuario && !usuario.perfil_cliente) {
+    let posibleCliente = await models.Cliente.findOne({ where: { usuario_id: usuario.id } });
+    if (!posibleCliente) posibleCliente = await models.Cliente.findOne({ where: { email: usuario.email } });
+    if (!posibleCliente) {
+      const clienteByPk = await models.Cliente.findByPk(usuario.id);
+      if (clienteByPk) posibleCliente = clienteByPk;
+    }
+
+    // Construir objeto plano y adjuntar posibleCliente
+    const plainUsuario = usuario.toJSON ? usuario.toJSON() : { ...usuario };
+    if (posibleCliente) plainUsuario.perfil_cliente = posibleCliente.toJSON ? posibleCliente.toJSON() : posibleCliente;
+
+    if (!plainUsuario) {
+      const error = new Error('Usuario no encontrado');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    return sanitizeUser(plainUsuario);
+  }
+
   if (!usuario) {
     const error = new Error('Usuario no encontrado');
     error.statusCode = 404;
     throw error;
   }
 
-  return sanitizeUser(usuario);
+  // Caso donde usuario ya trae perfil (incluido por el include)
+  const plain = usuario.toJSON ? usuario.toJSON() : { ...usuario };
+  return sanitizeUser(plain);
 };

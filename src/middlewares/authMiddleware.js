@@ -36,8 +36,11 @@ export const authMiddleware = async (req, res, next) => {
       return next(error);
     }
 
+
     const decoded = jwt.verify(token, authConfig.accessSecret);
-    const usuario = await models.Usuario.findByPk(decoded.sub);
+    const usuario = await models.Usuario.findByPk(decoded.sub, {
+      include: [{ model: models.Cliente, as: 'perfil_cliente' }],
+    });
 
     if (!usuario || !usuario.activo) {
       const error = new Error('Usuario no válido');
