@@ -61,7 +61,7 @@ class Vehiculos extends Model {
     return {
       sequelize,
       tableName: VEHICULO_TABLE,
-      modelName: 'Vehiculos',
+      modelName: 'Vehiculo',
       timestamps: true,
     };
   }
