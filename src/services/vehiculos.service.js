@@ -1,55 +1,70 @@
 import { models } from '../libs/sequelize.js';
 
-// Obtener todos los clientes (con sus vehículos opcionalmente)
+// Obtener todos los vehículos (incluyendo su cliente asociado si existe la relación)
 export const getAll = async () => {
-  return await models.Cliente.findAll({
-    include: [{ model: models.Vehiculo, as: 'vehiculos' }] // <-- models.Vehiculo
+  return await models.Vehiculo.findAll({
+    include: [{ model: models.Cliente, as: 'cliente' }]
   });
 };
 
-// Buscar cliente por ID
+// Buscar vehículo por ID
 export const getById = async (id) => {
-  const cliente = await models.Cliente.findByPk(id, {
-    include: [{ model: models.Vehiculo, as: 'vehiculos' }] // <-- models.Vehiculo
+  const vehiculo = await models.Vehiculo.findByPk(id, {
+    include: [{ model: models.Cliente, as: 'cliente' }]
   });
 
-  if (!cliente) {
-    throw new Error('El cliente no existe');
+  if (!vehiculo) {
+    throw new Error('El vehículo no existe');
   }
-  return cliente;
+  return vehiculo;
 };
 
-// Crear cliente
+// Buscar vehículo por patente (requerido por tu controlador)
+export const getByPatente = async (patente) => {
+  const vehiculo = await models.Vehiculo.findOne({
+    where: { patente: patente.toUpperCase() },
+    include: [{ model: models.Cliente, as: 'cliente' }]
+  });
+  return vehiculo;
+};
+
+// Crear vehículo
 export const create = async (body) => {
-  if (body.rut) {
-    const existe = await models.Cliente.findOne({ where: { rut: body.rut } });
+  if (body.patente) {
+    const existe = await models.Vehiculo.findOne({ 
+      where: { patente: body.patente.toUpperCase() } 
+    });
     if (existe) {
-      throw new Error(`El cliente con RUT ${body.rut} ya se encuentra registrado.`);
+      throw new Error(`El vehículo con patente ${body.patente.toUpperCase()} ya está registrado.`);
     }
   }
 
-  const newCliente = await models.Cliente.create(body);
-  return { cliente: newCliente, message: 'Cliente creado exitosamente' };
+  const newVehiculo = await models.Vehiculo.create({
+    ...body,
+    patente: body.patente ? body.patente.toUpperCase() : body.patente
+  });
+  
+  return { vehiculo: newVehiculo, message: 'Vehículo creado exitosamente' };
 };
 
-// Actualizar cliente
+// Actualizar vehículo
 export const update = async (id, body) => {
-  const cliente = await models.Cliente.findByPk(id);
-  if (!cliente) {
-    throw new Error('El cliente no existe');
+  const vehiculo = await models.Vehiculo.findByPk(id);
+  if (!vehiculo) {
+    throw new Error('El vehículo no existe');
   }
 
-  const updatedCliente = await cliente.update(body);
-  return updatedCliente;
+  const updatedVehiculo = await vehiculo.update(body);
+  return updatedVehiculo;
 };
 
-// Eliminar cliente
+// Eliminar vehículo
 export const remove = async (id) => {
-  const cliente = await models.Cliente.findByPk(id);
-  if (!cliente) {
-    throw new Error('El cliente no existe');
+  const vehiculo = await models.Vehiculo.findByPk(id);
+  if (!vehiculo) {
+    throw new Error('El vehículo no existe');
   }
 
-  await cliente.destroy();
-  return { message: 'Cliente eliminado exitosamente' };
+  await vehiculo.destroy();
+  return { message: 'Vehículo eliminado exitosamente' };
 };
