@@ -2,6 +2,16 @@ import jwt from 'jsonwebtoken';
 import { models } from '../libs/sequelize.js';
 import { authConfig } from '../config/auth.js';
 
+const sanitizeUser = (usuario) => {
+  if (!usuario) return null;
+  const plain = usuario.toJSON ? usuario.toJSON() : { ...usuario };
+  // Eliminar campos sensibles o que no deberían viajar dentro de req
+  delete plain.password_hash;
+  delete plain.updatedAt;
+  delete plain.createdAt;
+  return plain;
+};
+
 const getBearerToken = (req) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -35,7 +45,7 @@ export const authMiddleware = async (req, res, next) => {
       return next(error);
     }
 
-    req.user = usuario;
+    req.user = sanitizeUser(usuario);
     return next();
   } catch (error) {
     const authError = new Error('Token inválido o expirado');

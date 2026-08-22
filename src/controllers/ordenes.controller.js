@@ -2,7 +2,7 @@ import * as ordenesService from '../services/ordenes.service.js';
 
 export const getOrdenes = async (req, res) => {
   try {
-    const ordenes = await ordenesService.getAll();
+    const ordenes = await ordenesService.getAll(req.user);
     return res.status(200).json(ordenes);
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -12,7 +12,7 @@ export const getOrdenes = async (req, res) => {
 export const getOrdenById = async (req, res) => {
   try {
     const { id } = req.params;
-    const orden = await ordenesService.getById(id);
+    const orden = await ordenesService.getById(id, req.user);
     return res.status(200).json(orden);
   } catch (error) {
     return res.status(404).json({ message: error.message });
@@ -73,7 +73,7 @@ export const pagarOrden = async (req, res) => {
 export const getBoletaOrden = async (req, res) => {
   try {
     const { id } = req.params;
-    const boleta = await ordenesService.getBoletaById(id);
+    const boleta = await ordenesService.getBoletaById(id, req.user);
     return res.status(200).json(boleta);
   } catch (error) {
     return res.status(400).json({ message: error.message });

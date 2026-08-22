@@ -25,22 +25,39 @@ const buildIncludes = () => [
   },
 ];
 
-export const getAll = async () => {
+export const getAll = async (user = null) => {
+  const where = {};
+  if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
+    const clienteId = user.cliente_id || user.clienteId || user.id;
+    where.cliente_id = clienteId;
+  }
+
   return await models.Boleta.findAll({
+    where,
     include: buildIncludes(),
     order: [['fecha_emision', 'DESC']],
   });
 };
 
-export const getById = async (id) => {
+export const getById = async (id, user = null) => {
   const boleta = await models.Boleta.findByPk(id, { include: buildIncludes() });
   if (!boleta) {
     throw new Error('La boleta no existe');
   }
+
+  if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
+    const clienteId = user.cliente_id || user.clienteId || user.id;
+    if (Number(boleta.cliente_id) !== Number(clienteId)) {
+      const err = new Error('No autorizado para ver esta boleta');
+      err.statusCode = 403;
+      throw err;
+    }
+  }
+
   return boleta;
 };
 
-export const getByOrderId = async (ordenId) => {
+export const getByOrderId = async (ordenId, user = null) => {
   const boleta = await models.Boleta.findOne({
     where: { orden_id: ordenId },
     include: buildIncludes(),
@@ -48,6 +65,15 @@ export const getByOrderId = async (ordenId) => {
 
   if (!boleta) {
     throw new Error('La boleta no existe para esta orden');
+  }
+
+  if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
+    const clienteId = user.cliente_id || user.clienteId || user.id;
+    if (Number(boleta.cliente_id) !== Number(clienteId)) {
+      const err = new Error('No autorizado para ver esta boleta');
+      err.statusCode = 403;
+      throw err;
+    }
   }
 
   return boleta;

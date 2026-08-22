@@ -37,16 +37,16 @@ export const setAuthCookies = (res, accessToken, refreshToken) => {
   res.cookie('accessToken', accessToken, {
     // ...authConfig.cookieOptions, <-- Puedes mantener esto si quieres, pero agrega lo siguiente:
     httpOnly: true,
-    secure: true,       // Obligatorio para HTTPS en Railway
-    sameSite: 'none',   // Permite que la cookie viaje entre dominios distintos
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     maxAge: 15 * 60 * 1000,
   });
 
   res.cookie('refreshToken', refreshToken, {
     // ...authConfig.cookieOptions,
     httpOnly: true,
-    secure: true,
-    sameSite: 'none',
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 };

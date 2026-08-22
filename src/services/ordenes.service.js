@@ -17,7 +17,23 @@ const buildOrderIncludes = () => [
 ];
 
 // 1. Obtener todas las órdenes de trabajo
-export const getAll = async () => {
+export const getAll = async (user = null) => {
+  const where = {};
+  // Si el usuario es cliente, filtrar sólo sus órdenes a través del cliente asociado al vehículo
+  if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
+    const clienteId = user.cliente_id || user.clienteId || user.id;
+    // Hacemos join vía vehiculo.cliente_id añadiendo condición en include mediante where en asociación
+    return await models.Orden.findAll({
+      include: buildOrderIncludes().map((inc) => {
+        if (inc.as === 'vehiculo') {
+          return { ...inc, where: { cliente_id: clienteId } };
+        }
+        return inc;
+      }),
+      order: [['fecha_ingreso', 'DESC']],
+    });
+  }
+
   return await models.Orden.findAll({
     include: buildOrderIncludes(),
     order: [['fecha_ingreso', 'DESC']],
@@ -25,13 +41,23 @@ export const getAll = async () => {
 };
 
 // 2. Obtener orden por ID
-export const getById = async (id) => {
+export const getById = async (id, user = null) => {
   const orden = await models.Orden.findByPk(id, {
     include: buildOrderIncludes(),
   });
 
   if (!orden) {
     throw new Error('La orden de trabajo no existe');
+  }
+
+  if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
+    const clienteId = user.cliente_id || user.clienteId || user.id;
+    const vehClienteId = orden.vehiculo?.cliente_id || orden.vehiculo?.cliente?.id;
+    if (Number(vehClienteId) !== Number(clienteId)) {
+      const err = new Error('No autorizado para ver esta orden');
+      err.statusCode = 403;
+      throw err;
+    }
   }
 
   return orden;
@@ -259,7 +285,7 @@ export const createReservaExpress = async (body) => {
   }
 };
 
-export const getBoletaById = async (id) => {
+export const getBoletaById = async (id, user = null) => {
   const orden = await models.Orden.findByPk(id, {
     include: [
       {
@@ -277,6 +303,16 @@ export const getBoletaById = async (id) => {
 
   if (!orden) {
     throw new Error('La orden no existe');
+  }
+
+  if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
+    const clienteId = user.cliente_id || user.clienteId || user.id;
+    const vehClienteId = orden.vehiculo?.cliente_id || orden.vehiculo?.cliente?.id;
+    if (Number(vehClienteId) !== Number(clienteId)) {
+      const err = new Error('No autorizado para ver esta boleta');
+      err.statusCode = 403;
+      throw err;
+    }
   }
 
   return {

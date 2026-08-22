@@ -17,11 +17,16 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
+    // Permitir solicitudes sin origin (ej. herramientas de desarrollo o server-to-server)
     if (!origin) return callback(null, true);
+
+    // Permitimos solo orígenes en la lista blanca o dominios de deploy conocidos
     if (allowedOrigins.includes(origin) || origin.endsWith('.up.railway.app')) {
       return callback(null, true);
     }
-    return callback(null, true);
+
+    // Rechazar explícitamente orígenes no permitidos
+    return callback(new Error('CORS: origen no permitido'), false);
   },
   credentials: true
 }));
