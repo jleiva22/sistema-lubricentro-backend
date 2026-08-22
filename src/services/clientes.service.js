@@ -1,18 +1,16 @@
-// import db from '../database/models/index.js';
+import { models } from '../libs/sequelize.js';
 
-import {models} from '../libs/sequelize.js'
-
-
+// Obtener todos los clientes
 export const getAll = async () => {
   return await models.Cliente.findAll({
-    include: [{ model: Vehiculo, as: 'vehiculos' }]
+    include: [{ model: models.Vehiculo, as: 'vehiculos' }] // <-- Usar models.Vehiculo
   });
 };
 
 // Buscar cliente por ID
 export const getById = async (id) => {
   const cliente = await models.Cliente.findByPk(id, {
-    include: [{ model: Vehiculo, as: 'vehiculos' }]
+    include: [{ model: models.Vehiculo, as: 'vehiculos' }] // <-- Usar models.Vehiculo
   });
 
   if (!cliente) {
@@ -23,7 +21,6 @@ export const getById = async (id) => {
 
 // Crear cliente
 export const create = async (body) => {
-  // Verificar si el RUT ya está registrado
   if (body.rut) {
     const existe = await models.Cliente.findOne({ where: { rut: body.rut } });
     if (existe) {
@@ -32,7 +29,7 @@ export const create = async (body) => {
   }
 
   const newCliente = await models.Cliente.create(body);
-  return { cliente: newCliente, message: 'models.Cliente creado exitosamente' };
+  return { cliente: newCliente, message: 'Cliente creado exitosamente' };
 };
 
 // Actualizar cliente
@@ -54,5 +51,5 @@ export const remove = async (id) => {
   }
 
   await cliente.destroy();
-  return { message: 'models.Cliente eliminado exitosamente' };
+  return { message: 'Cliente eliminado exitosamente' };
 };
