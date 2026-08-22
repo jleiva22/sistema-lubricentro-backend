@@ -156,7 +156,10 @@ export const createReservaExpress = async (body) => {
   try {
     // 1. Buscar o crear cliente
     let cliente = null;
-    if (email) {
+    if (body.rut) {
+      cliente = await models.Cliente.findOne({ where: { rut: body.rut }, transaction });
+    }
+    if (!cliente && email) {
       cliente = await models.Cliente.findOne({ where: { email }, transaction });
     }
     if (!cliente && telefono) {

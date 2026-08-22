@@ -1,4 +1,5 @@
 import * as authService from '../services/auth.service.js';
+import * as usuarioService from '../services/usuarios.service.js';
 
 export const login = async (req, res, next) => {
   try {
@@ -7,6 +8,29 @@ export const login = async (req, res, next) => {
 
     return res.status(200).json({
       message: 'Login exitoso',
+      usuario,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const register = async (req, res, next) => {
+  try {
+    const { nombre, apellido, email, password } = req.body;
+    await usuarioService.create({
+      nombre,
+      apellido: apellido || '',
+      email,
+      password,
+      rol: 'cliente',
+    });
+
+    const { usuario, accessToken, refreshToken } = await authService.login({ email, password });
+    authService.setAuthCookies(res, accessToken, refreshToken);
+
+    return res.status(201).json({
+      message: 'Registro exitoso e inicio de sesión automático',
       usuario,
     });
   } catch (error) {
@@ -43,3 +67,4 @@ export const me = async (req, res, next) => {
     return next(error);
   }
 };
+
