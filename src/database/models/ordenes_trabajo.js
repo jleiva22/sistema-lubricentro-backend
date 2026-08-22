@@ -3,6 +3,8 @@ import { VEHICULO_TABLE } from './vehiculos.js';
 
 const Orden_Table = 'ordenes_trabajo';
 
+// models/orden.model.js
+
 const OrdenSchema = {
   id: {
     type: DataTypes.INTEGER,
@@ -25,14 +27,14 @@ const OrdenSchema = {
     allowNull: false,
   },
   fecha_programada: {
-    type: DataTypes.DATE,
+    type: DataTypes.DATE, // 💡 Aquí guardas la fecha y hora agendada (ej: "2026-08-25 10:30:00")
   },
   fecha_finalizacion: {
     type: DataTypes.DATE,
   },
   kilometraje_ingreso: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true, // 💡 CAMBIO: Permitir null al agendar desde la web
   },
   proximo_cambio_km: {
     type: DataTypes.INTEGER,
@@ -44,7 +46,8 @@ const OrdenSchema = {
     type: DataTypes.TEXT,
   },
   estado: {
-    type: DataTypes.ENUM('recepcionado', 'en_proceso', 'completado', 'pagado', 'cancelado'),
+    // 💡 CAMBIO: Se agrega 'agendada'
+    type: DataTypes.ENUM('agendada', 'recepcionado', 'en_proceso', 'completado', 'pagado', 'cancelado'),
     defaultValue: 'recepcionado',
     allowNull: false,
   },

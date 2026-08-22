@@ -134,6 +134,8 @@ export const create = async (body) => {
 
 export const createReservaExpress = async (body) => {
   const {
+    cliente_id, // 👈 Se agrega para usuarios logueados
+    vehiculo_id, // 👈 Se agrega para usuarios logueados
     nombre,
     apellido = '',
     email,
@@ -143,55 +145,67 @@ export const createReservaExpress = async (body) => {
     modelo = 'Estándar',
     fecha_programada,
     servicio_ids = [],
-    observaciones_fallas = 'Reserva Express desde Landing Page',
+    observaciones_fallas = 'Reserva desde sitio web',
   } = body;
 
-  if (!email && !telefono) throw new Error('Debes proporcionar correo o teléfono de contacto');
-  if (!patente) throw new Error('La patente es obligatoria');
+  // Validación rápida
+  if (!vehiculo_id && !patente) {
+    throw new Error('Debes seleccionar un vehículo o ingresar una patente');
+  }
 
   const transaction = await sequelize.transaction();
 
   try {
-    let cliente = null;
-    if (body.rut) {
-      cliente = await models.Cliente.findOne({ where: { rut: body.rut }, transaction });
-    }
-    if (!cliente && email) {
-      cliente = await models.Cliente.findOne({ where: { email }, transaction });
-    }
-    if (!cliente && telefono) {
-      cliente = await models.Cliente.findOne({ where: { telefono }, transaction });
+    let vehiculo = null;
+
+    // 1. Si el usuario está logueado y envió un vehiculo_id
+    if (vehiculo_id) {
+      vehiculo = await models.Vehiculo.findByPk(vehiculo_id, { transaction });
+      if (!vehiculo) throw new Error('El vehículo seleccionado no existe');
+    } else {
+      // 2. Si es un invitado, buscar o crear cliente y vehículo
+      let cliente = null;
+      if (body.rut) {
+        cliente = await models.Cliente.findOne({ where: { rut: body.rut }, transaction });
+      }
+      if (!cliente && email) {
+        cliente = await models.Cliente.findOne({ where: { email }, transaction });
+      }
+      if (!cliente && telefono) {
+        cliente = await models.Cliente.findOne({ where: { telefono }, transaction });
+      }
+
+      if (!cliente) {
+        cliente = await models.Cliente.create({
+          nombre: nombre || 'Cliente Express',
+          apellido: apellido || 'General',
+          rut: body.rut || `RES-${Date.now().toString().slice(-6)}`,
+          email: email || `invitado_${Date.now()}@lubricentro.cl`,
+          telefono: telefono || '+56900000000',
+          activo: true,
+        }, { transaction });
+      }
+
+      const cleanPatente = patente.toUpperCase().trim();
+      vehiculo = await models.Vehiculo.findOne({
+        where: { patente: cleanPatente },
+        transaction,
+      });
+
+      if (!vehiculo) {
+        vehiculo = await models.Vehiculo.create({
+          cliente_id: cliente.id,
+          patente: cleanPatente,
+          marca: marca || 'Multimarca',
+          modelo: modelo || 'Estándar',
+          anio: new Date().getFullYear(),
+          tipo_motor: 'Gasolina',
+          kilometraje_actual: 0,
+        }, { transaction });
+      }
     }
 
-    if (!cliente) {
-      cliente = await models.Cliente.create({
-        nombre: nombre || 'Cliente Express',
-        apellido: apellido || 'General',
-        rut: body.rut || `RES-${Date.now().toString().slice(-6)}`,
-        email: email || `invitado_${Date.now()}@lubricentro.cl`,
-        telefono: telefono || '+56900000000',
-        activo: true,
-      }, { transaction });
-    }
-
-    const cleanPatente = patente.toUpperCase().trim();
-    let vehiculo = await models.Vehiculo.findOne({ // ✅ Corregido
-      where: { patente: cleanPatente },
-      transaction,
-    });
-
-    if (!vehiculo) {
-      vehiculo = await models.Vehiculo.create({ // ✅ Corregido
-        cliente_id: cliente.id,
-        patente: cleanPatente,
-        marca: marca || 'Multimarca',
-        modelo: modelo || 'Estándar',
-        anio: new Date().getFullYear(),
-        tipo_motor: 'Gasolina',
-        kilometraje_actual: 0,
-      }, { transaction });
-    }
-
+    // 3. Procesar Servicios
     let subtotal = 0;
     const detallesProcesados = [];
     const idsParaProcesar = Array.isArray(servicio_ids) && servicio_ids.length > 0 ? servicio_ids : [1];
@@ -213,6 +227,7 @@ export const createReservaExpress = async (body) => {
     const iva = roundMoney(subtotal * 0.19);
     const total = roundMoney(subtotal + iva);
 
+    // 4. Crear la Orden con estado 'agendada'
     const nuevaOrden = await models.Orden.create({
       vehiculo_id: vehiculo.id,
       fecha_programada: fecha_programada || new Date(),
@@ -221,7 +236,7 @@ export const createReservaExpress = async (body) => {
       subtotal,
       iva,
       total,
-      estado: 'recepcionado',
+      estado: 'agendada', // 👈 CAMBIO: Se define como agendada
       pagado: false,
       boleta_emitida: false,
     }, { transaction });
