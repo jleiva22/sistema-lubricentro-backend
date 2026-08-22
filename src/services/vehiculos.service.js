@@ -1,8 +1,18 @@
 import { models } from '../libs/sequelize.js';
 
-export const getAll = async () => {
+export const getAll = async (user = null) => {
+  const where = {};
+
+  // ✅ Si el usuario tiene rol 'cliente', solo filtramos sus vehículos
+  if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
+    const clienteId = user.cliente_id || user.clienteId || user.id;
+    where.cliente_id = clienteId;
+  }
+
   return await models.Vehiculo.findAll({
-    include: [{ model: models.Cliente, as: 'cliente' }]
+    where,
+    include: [{ model: models.Cliente, as: 'cliente' }],
+    order: [['createdAt', 'DESC']],
   });
 };
 
@@ -21,9 +31,9 @@ export const getByPatente = async (patente) => {
   });
 };
 
-export const create = async (data) => {
-  const {
-    cliente_id = 1,
+export const create = async (data, user = null) => {
+  let {
+    cliente_id,
     patente,
     marca,
     modelo,
@@ -34,13 +44,18 @@ export const create = async (data) => {
 
   if (!patente) throw new Error('La patente es obligatoria');
 
+  // ✅ Si no se especifica cliente_id y quien crea es un cliente, usamos su ID
+  if (!cliente_id && user && (user.rol === 'cliente' || user.role === 'cliente')) {
+    cliente_id = user.cliente_id || user.clienteId || user.id;
+  }
+
+  cliente_id = cliente_id || 1; // Valor por defecto si no viene especificado
+
   const cleanPatente = patente.toUpperCase().trim();
 
-  // Busca si el vehículo ya existe por patente
   let vehiculo = await models.Vehiculo.findOne({ where: { patente: cleanPatente } });
 
   if (vehiculo) {
-    // Si ya existía (ej. creado como Multimarca en reserva express), actualizamos sus datos
     await vehiculo.update({
       cliente_id: cliente_id || vehiculo.cliente_id,
       marca: marca || vehiculo.marca,
@@ -50,7 +65,6 @@ export const create = async (data) => {
       kilometraje_actual: kilometraje_actual || vehiculo.kilometraje_actual,
     });
   } else {
-    // Si no existe, lo creamos
     vehiculo = await models.Vehiculo.create({
       cliente_id,
       patente: cleanPatente,

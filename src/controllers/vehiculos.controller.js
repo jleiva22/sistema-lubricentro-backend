@@ -1,4 +1,4 @@
-import  * as vehiculoService from '../services/vehiculos.service.js';
+import * as vehiculoService from '../services/vehiculos.service.js';
 
 export const getVehiculoByPatente = async (req, res) => {
   try {
@@ -23,7 +23,8 @@ export const getVehiculoByPatente = async (req, res) => {
 
 export const getVehiculos = async (req, res) => {
   try {
-    const vehiculos = await vehiculoService.getAll();
+    // ✅ Se pasa req.user (proporcionado por el middleware de autenticación)
+    const vehiculos = await vehiculoService.getAll(req.user);
     return res.status(200).json(vehiculos);
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -42,7 +43,8 @@ export const getVehiculoById = async (req, res) => {
 
 export const createVehiculo = async (req, res) => {
   try {
-    const result = await vehiculoService.create(req.body);
+    // ✅ Se pasa req.user
+    const result = await vehiculoService.create(req.body, req.user);
     return res.status(201).json(result);
   } catch (error) {
     return res.status(400).json({ message: error.message });
