@@ -45,7 +45,7 @@ const ClienteSchema = {
 class Cliente extends Model {
   static associate(models) {
     // Relación 1 a N: Un cliente tiene muchos vehículos
-    this.hasMany(models.Vehiculos, {
+    this.hasMany(models.Vehiculo, {
       foreignKey: 'cliente_id',
       as: 'vehiculos',
     });
