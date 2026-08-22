@@ -5,10 +5,16 @@ import { authConfig } from '../config/auth.js';
 const sanitizeUser = (usuario) => {
   if (!usuario) return null;
   const plain = usuario.toJSON ? usuario.toJSON() : { ...usuario };
-  // Eliminar campos sensibles o que no deberían viajar dentro de req
+  
   delete plain.password_hash;
   delete plain.updatedAt;
   delete plain.createdAt;
+
+  // 👈 CORRECCIÓN CLAVE: Mapear el ID del cliente a req.user.cliente_id
+  if (plain.perfil_cliente) {
+    plain.cliente_id = plain.perfil_cliente.id;
+  }
+
   return plain;
 };
 
@@ -36,9 +42,8 @@ export const authMiddleware = async (req, res, next) => {
       return next(error);
     }
 
-
     const decoded = jwt.verify(token, authConfig.accessSecret);
-    const usuario = await models.Usuario.findByPk(decoded.sub, {
+    let usuario = await models.Usuario.findByPk(decoded.sub, {
       include: [{ model: models.Cliente, as: 'perfil_cliente' }],
     });
 
@@ -46,6 +51,17 @@ export const authMiddleware = async (req, res, next) => {
       const error = new Error('Usuario no válido');
       error.statusCode = 401;
       return next(error);
+    }
+
+    // 👈 Búsqueda de respaldo si la relaciónPerfilCliente devolvió null
+    if (!usuario.perfil_cliente && usuario.rol === 'cliente') {
+      const posibleCliente = await models.Cliente.findOne({
+        where: { email: usuario.email },
+      });
+      if (posibleCliente) {
+        usuario = usuario.toJSON ? usuario.toJSON() : usuario;
+        usuario.perfil_cliente = posibleCliente;
+      }
     }
 
     req.user = sanitizeUser(usuario);

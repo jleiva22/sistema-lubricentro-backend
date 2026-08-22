@@ -21,7 +21,7 @@ export const getAll = async (user = null) => {
   const where = {};
   // Si el usuario es cliente, filtrar sólo sus órdenes a través del cliente asociado al vehículo
   if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
-    const clienteId = user.cliente_id || user.clienteId || user.id;
+    const clienteId = user.cliente_id || user.perfil_cliente?.id;
     // Hacemos join vía vehiculo.cliente_id añadiendo condición en include mediante where en asociación
     return await models.Orden.findAll({
       include: buildOrderIncludes().map((inc) => {
@@ -51,7 +51,7 @@ export const getById = async (id, user = null) => {
   }
 
   if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
-    const clienteId = user.cliente_id || user.clienteId || user.id;
+    const clienteId = user.cliente_id || user.perfil_cliente?.id;
     const vehClienteId = orden.vehiculo?.cliente_id || orden.vehiculo?.cliente?.id;
     if (Number(vehClienteId) !== Number(clienteId)) {
       const err = new Error('No autorizado para ver esta orden');
@@ -306,7 +306,7 @@ export const getBoletaById = async (id, user = null) => {
   }
 
   if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
-    const clienteId = user.cliente_id || user.clienteId || user.id;
+    const clienteId = user.cliente_id || user.perfil_cliente?.id;
     const vehClienteId = orden.vehiculo?.cliente_id || orden.vehiculo?.cliente?.id;
     if (Number(vehClienteId) !== Number(clienteId)) {
       const err = new Error('No autorizado para ver esta boleta');

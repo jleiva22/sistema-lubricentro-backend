@@ -5,7 +5,7 @@ export const getAll = async (user = null) => {
 
   // ✅ Si el usuario tiene rol 'cliente', solo filtramos sus vehículos
   if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
-    const clienteId = user.cliente_id || user.clienteId || user.id;
+  const clienteId = user.cliente_id || user.perfil_cliente?.id;
     where.cliente_id = clienteId;
   }
 

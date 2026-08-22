@@ -28,7 +28,7 @@ const buildIncludes = () => [
 export const getAll = async (user = null) => {
   const where = {};
   if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
-    const clienteId = user.cliente_id || user.clienteId || user.id;
+    const clienteId = user.cliente_id || user.perfil_cliente?.id;
     where.cliente_id = clienteId;
   }
 
