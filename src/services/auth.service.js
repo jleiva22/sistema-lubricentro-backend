@@ -35,12 +35,18 @@ const createRefreshToken = (usuario) => {
 
 export const setAuthCookies = (res, accessToken, refreshToken) => {
   res.cookie('accessToken', accessToken, {
-    ...authConfig.cookieOptions,
+    // ...authConfig.cookieOptions, <-- Puedes mantener esto si quieres, pero agrega lo siguiente:
+    httpOnly: true,
+    secure: true,       // Obligatorio para HTTPS en Railway
+    sameSite: 'none',   // Permite que la cookie viaje entre dominios distintos
     maxAge: 15 * 60 * 1000,
   });
 
   res.cookie('refreshToken', refreshToken, {
-    ...authConfig.cookieOptions,
+    // ...authConfig.cookieOptions,
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 };

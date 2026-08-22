@@ -9,9 +9,9 @@ export const authConfig = {
   refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   cookieOptions: {
     httpOnly: true,
-    sameSite: 'strict',
-    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'none', // <-- ¡EL CAMBIO CLAVE! Permite cross-origin
+    secure: true,     // <-- Ponlo en true directamente. Railway usa HTTPS y sameSite 'none' OBLIGA a que secure sea true.
     path: '/',
-    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    // expires: ... (puedes dejarlo o quitarlo, ya lo estás manejando en auth.services.js con maxAge)
   },
 };
