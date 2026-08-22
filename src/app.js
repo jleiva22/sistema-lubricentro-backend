@@ -20,18 +20,19 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // Función con reintentos para autenticar Sequelize
-const connectWithRetry = async (retries = 20, delay = 5000) => {
+const connectWithRetry = async (retries = 5, delay = 3000) => {
   while (retries) {
     try {
       await sequelize.authenticate();
       console.log('✅ Conexión a MySQL establecida correctamente.');
 
-      await sequelize.sync({ alter: true, logging: false });
+      await sequelize.sync();
       console.log('✅ Modelos sincronizados con la DB.');
       break;
     } catch (error) {
       retries -= 1;
-      console.log(`⏳ Esperando a MySQL... Reintentos restantes: ${retries}`);
+      console.error(`⚠️ Error en la conexión/sincronización con la DB: ${error.message}`);
+      console.log(`⏳ Reintentos restantes: ${retries}`);
       if (retries === 0) {
         console.error('❌ Error crítico al conectar con la base de datos:', error);
       } else {
