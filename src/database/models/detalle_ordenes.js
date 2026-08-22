@@ -2,9 +2,9 @@ import { DataTypes, Model } from 'sequelize';
 import { Catalogo_Table } from './catalogo_servicios.js';
 import { Orden_Table } from './ordenes_trabajo.js';
 
-export const DetalleOrden_Table = 'detalle_ordenes';
+const DETALLE_ORDEN_TABLE = 'detalle_ordenes';
 
-export const DetalleOrdenesSchema = {
+const DetalleOrdenSchema = {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -50,7 +50,7 @@ class DetalleOrden extends Model {
     // Relación con Catálogo / Servicio
     this.belongsTo(models.Catalogo, {
       foreignKey: 'servicio_id',
-      as: 'servicio', // <-- AQUÍ: Debe decir exactamente 'servicio'
+      as: 'servicio',
     });
   }
 
@@ -58,7 +58,7 @@ class DetalleOrden extends Model {
     return {
       sequelize,
       modelName: 'DetalleOrden',
-      tableName: DetalleOrden_Table,
+      tableName: DETALLE_ORDEN_TABLE,
       timestamps: true,
     };
   }
