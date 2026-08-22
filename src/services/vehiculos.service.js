@@ -21,22 +21,48 @@ export const getByPatente = async (patente) => {
   });
 };
 
-export const create = async (body) => {
-  if (body.patente) {
-    const existe = await models.Vehiculo.findOne({
-      where: { patente: body.patente.toUpperCase() }
+export const create = async (data) => {
+  const {
+    cliente_id = 1,
+    patente,
+    marca,
+    modelo,
+    anio,
+    tipo_motor,
+    kilometraje_actual
+  } = data;
+
+  if (!patente) throw new Error('La patente es obligatoria');
+
+  const cleanPatente = patente.toUpperCase().trim();
+
+  // Busca si el vehículo ya existe por patente
+  let vehiculo = await models.Vehiculo.findOne({ where: { patente: cleanPatente } });
+
+  if (vehiculo) {
+    // Si ya existía (ej. creado como Multimarca en reserva express), actualizamos sus datos
+    await vehiculo.update({
+      cliente_id: cliente_id || vehiculo.cliente_id,
+      marca: marca || vehiculo.marca,
+      modelo: modelo || vehiculo.modelo,
+      anio: anio || vehiculo.anio,
+      tipo_motor: tipo_motor || vehiculo.tipo_motor,
+      kilometraje_actual: kilometraje_actual || vehiculo.kilometraje_actual,
     });
-    if (existe) {
-      throw new Error(`La patente ${body.patente.toUpperCase()} ya se encuentra registrada.`);
-    }
+  } else {
+    // Si no existe, lo creamos
+    vehiculo = await models.Vehiculo.create({
+      cliente_id,
+      patente: cleanPatente,
+      marca,
+      modelo,
+      anio,
+      tipo_motor,
+      kilometraje_actual,
+    });
   }
 
-  const newVehiculo = await models.Vehiculo.create({
-    ...body,
-    patente: body.patente ? body.patente.toUpperCase() : body.patente
-  });
-
-  return { vehiculo: newVehiculo, message: 'Vehículo creado exitosamente' };
+  return vehiculo;
 };
 
 export const update = async (id, body) => {
