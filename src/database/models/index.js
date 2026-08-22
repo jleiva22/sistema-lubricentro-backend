@@ -3,7 +3,7 @@ import {Boleta, BoletaSchema} from './boletas.js'
 import {BoletaDetalle, BoletaDetalleSchema} from './boletas_detalles.js'
 import {Cliente, ClienteSchema} from './clientes.js'
 import {Catalogo, CatalogoSchema} from './catalogo_servicios.js'
-import {DetalleOrden, DetalleOrdenesSchema} from './detalle_ordenes.js'
+import { DetalleOrden, DetalleOrdenSchema } from './detalle_ordenes.js';
 import {Orden, OrdenSchema} from './ordenes_trabajo.js'
 import {Usuario, UsuarioSchema} from './usuarios.js'
 import {Vehiculo, VehiculoSchema} from './vehiculos.js'
@@ -16,7 +16,7 @@ export function setupModels(sequelize){
     Vehiculo.init(VehiculoSchema, Vehiculo.config(sequelize));
     Catalogo.init(CatalogoSchema, Catalogo.config(sequelize));
     Orden.init(OrdenSchema, Orden.config(sequelize));
-    DetalleOrden.init(DetalleOrdenesSchema, DetalleOrden.config(sequelize));
+    DetalleOrden.init(DetalleOrdenSchema, DetalleOrden.config(sequelize));
     Boleta.init(BoletaSchema, Boleta.config(sequelize));
     BoletaDetalle.init(BoletaDetalleSchema, BoletaDetalle.config(sequelize));
     // 2. Definición de Asociaciones
