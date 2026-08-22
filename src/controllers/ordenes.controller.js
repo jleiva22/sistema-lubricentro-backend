@@ -1,0 +1,91 @@
+import * as ordenesService from '../services/ordenes.service.js';
+
+export const getOrdenes = async (req, res) => {
+  try {
+    const ordenes = await ordenesService.getAll();
+    return res.status(200).json(ordenes);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getOrdenById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const orden = await ordenesService.getById(id);
+    return res.status(200).json(orden);
+  } catch (error) {
+    return res.status(404).json({ message: error.message });
+  }
+};
+
+export const createOrden = async (req, res) => {
+  try {
+    const newOrden = await ordenesService.create(req.body);
+    return res.status(201).json({
+      message: 'Orden de trabajo registrada exitosamente',
+      data: newOrden,
+    });
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+export const createReservaExpressPublic = async (req, res) => {
+  try {
+    const newOrden = await ordenesService.createReservaExpress(req.body);
+    return res.status(201).json({
+      message: 'Reserva express registrada correctamente en la base de datos',
+      data: newOrden,
+    });
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+export const updateEstadoOrden = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { estado } = req.body;
+    const ordenActualizada = await ordenesService.updateEstado(id, estado);
+    return res.status(200).json({
+      message: 'Estado actualizado correctamente',
+      data: ordenActualizada,
+    });
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+export const pagarOrden = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const orden = await ordenesService.marcarComoPagada(id);
+    return res.status(200).json({
+      message: 'Orden marcada como pagada',
+      data: orden,
+    });
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+export const getBoletaOrden = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const boleta = await ordenesService.getBoletaById(id);
+    return res.status(200).json(boleta);
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+export const deleteOrden = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await ordenesService.remove(id);
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(404).json({ message: error.message });
+  }
+};

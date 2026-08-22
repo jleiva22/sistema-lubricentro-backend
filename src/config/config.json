@@ -1,0 +1,10 @@
+{
+  "development": {
+    "username": "lubricentro_admin",
+    "password": "MisuperClaveSecretaUltraSegura$12345.",
+    "database": "lubricentro_db",
+    "host": "localhost",
+    "port": 3306,
+    "dialect": "mysql"
+  }
+}

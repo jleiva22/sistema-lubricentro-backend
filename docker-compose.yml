@@ -1,0 +1,42 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: lubriCentro_Container
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: "asdf12345."
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_DATABASE: "lubricentro_db"
+      MYSQL_USER: "lubricentro_admin"
+      MYSQL_PASSWORD: "MisuperClaveSecretaUltraSegura$12345."
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--protocol=tcp", "-u", "root", "-pasdf12345."]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  app:
+    build: .
+    container_name: backend_node_app
+    restart: always
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      NODE_ENV: development
+      DB_HOST: db
+      DB_NAME: lubricentro_db
+      DB_USER: lubricentro_admin
+      DB_USERNAME: lubricentro_admin
+      DB_PASSWORD: "MisuperClaveSecretaUltraSegura$12345."
+      DB_PORT: 3306
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  mysql_data:
