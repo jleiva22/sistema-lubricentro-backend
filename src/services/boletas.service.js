@@ -7,7 +7,7 @@ const buildIncludes = () => [
     as: 'orden',
     include: [
       {
-        model: models.Vehiculos,
+        model: models.Vehiculo,
         as: 'vehiculo',
         include: [{ model: models.Cliente, as: 'cliente' }],
       },
@@ -57,7 +57,7 @@ export const createFromOrder = async (ordenId) => {
   const orden = await models.Orden.findByPk(ordenId, {
     include: [
       {
-        model: models.Vehiculos,
+        model: models.Vehiculo, // ✅ Corregido a singular
         as: 'vehiculo',
         include: [{ model: models.Cliente, as: 'cliente' }],
       },
@@ -127,6 +127,7 @@ export const createFromOrder = async (ordenId) => {
     throw error;
   }
 };
+
 
 export const remove = async (id) => {
   const boleta = await models.Boleta.findByPk(id);
