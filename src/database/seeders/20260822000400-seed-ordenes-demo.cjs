@@ -38,31 +38,37 @@ module.exports = {
 
     if (ordenesActuales.length > 0) {
       return;
-    }
-
-    const vehiculo = vehiculos[0];
     const servicioAceite = servicios.find((item) => String(item.codigo).includes('ACE-003')) || servicios[0];
     const servicioFiltro = servicios.find((item) => String(item.codigo).includes('FILT')) || servicios[1] || servicios[0];
 
-    const subtotal = Number(servicioAceite.precio_unitario) + Number(servicioFiltro.precio_unitario);
-    const iva = Number((subtotal * 0.19).toFixed(2));
-    const total = Number((subtotal + iva).toFixed(2));
+    const ordenesActuales = await queryInterface.sequelize.query(
+      'SELECT id FROM ordenes_trabajo',
+      { type: QueryTypes.SELECT }
+    );
 
-    const [ordenCreada] = await queryInterface.bulkInsert('orden', [
+    if (ordenesActuales.length > 0) {
+      return;
+    }
+
+    const [vehiculo] = await queryInterface.sequelize.query(
+      'SELECT id FROM vehiculos LIMIT 1',
+      { type: QueryTypes.SELECT }
+    );
+
+    const [ordenCreada] = await queryInterface.bulkInsert('ordenes_trabajo', [
       {
-        vehiculo_id: vehiculo.id,
+        vehiculo_id: vehiculo?.id || 1,
         fecha_ingreso: new Date(),
-        fecha_programada: new Date(Date.now() + 86400000),
-        kilometraje_ingreso: vehiculo.kilometraje_actual || 15000,
-        proximo_cambio_km: 10000,
-        observaciones_fallas: 'Falta potencia y ruido al arrancar',
-        observaciones_reparacion: 'Cambio de aceite sintético y filtro de aceite',
-        estado: 'recepcionado',
+        kilometraje_ingreso: 45000,
+        proximo_cambio_km: 55000,
+        observaciones_fallas: 'Cambio de aceite sintético 5W-30 y filtro de aceite',
+        observaciones_reparacion: 'Servicio realizado sin inconvenientes',
+        estado: 'en_proceso',
         pagado: false,
         boleta_emitida: false,
-        subtotal,
-        iva,
-        total,
+        subtotal: 35000.0,
+        iva: 6650.0,
+        total: 41650.0,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -71,27 +77,27 @@ module.exports = {
     await queryInterface.bulkInsert('detalle_ordenes', [
       {
         orden_id: ordenCreada?.id || 1,
-        servicio_id: servicioAceite.id,
+        servicio_id: 1,
         cantidad: 1,
-        precio_unitario: servicioAceite.precio_unitario,
-        subtotal: servicioAceite.precio_unitario,
+        precio_unitario: 25000.0,
+        subtotal: 25000.0,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
       {
         orden_id: ordenCreada?.id || 1,
-        servicio_id: servicioFiltro.id,
+        servicio_id: 2,
         cantidad: 1,
-        precio_unitario: servicioFiltro.precio_unitario,
-        subtotal: servicioFiltro.precio_unitario,
+        precio_unitario: 10000.0,
+        subtotal: 10000.0,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
-    ], {});
+    ]);
   },
 
   async down(queryInterface, Sequelize) {
     await queryInterface.bulkDelete('detalle_ordenes', null, {});
-    await queryInterface.bulkDelete('orden', null, {});
+    await queryInterface.bulkDelete('ordenes_trabajo', null, {});
   },
 };

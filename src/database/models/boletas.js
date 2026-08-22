@@ -1,4 +1,5 @@
 import { DataTypes, Model } from 'sequelize';
+import { Orden_Table } from './ordenes_trabajo.js';
 
 export const Boleta_Table = 'boletas';
 
@@ -13,7 +14,7 @@ const BoletaSchema = {
     allowNull: false,
     unique: true,
     references: {
-      model: 'orden',
+      model: Orden_Table,
       key: 'id',
     },
     onUpdate: 'CASCADE',

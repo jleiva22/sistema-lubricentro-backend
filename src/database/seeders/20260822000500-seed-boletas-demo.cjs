@@ -18,7 +18,7 @@ module.exports = {
         SELECT o.id, o.subtotal, o.iva, o.total, o.boleta_emitida,
                v.id as vehiculo_id, v.patente, v.marca, v.modelo,
                c.id as cliente_id, c.nombre, c.apellido, c.rut, c.telefono, c.email
-        FROM orden o
+        FROM ordenes_trabajo o
         LEFT JOIN vehiculos v ON v.id = o.vehiculo_id
         LEFT JOIN clientes c ON c.id = v.cliente_id
         ORDER BY o.id DESC
@@ -92,7 +92,7 @@ module.exports = {
     }
 
     await queryInterface.sequelize.query(
-      'UPDATE orden SET boleta_emitida = true, updatedAt = NOW() WHERE id = :ordenId',
+      'UPDATE ordenes_trabajo SET boleta_emitida = true, updatedAt = NOW() WHERE id = :ordenId',
       {
         replacements: { ordenId: ordenActual.id },
       }
