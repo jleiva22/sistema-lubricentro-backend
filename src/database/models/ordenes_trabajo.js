@@ -77,19 +77,19 @@ const OrdenSchema = {
 
 class Orden extends Model {
   static associate(models) {
-    // Relación N a 1 con Vehiculo
-    this.belongsTo(models.Vehiculos, {
+    // 1. Relación con Vehículo
+    this.belongsTo(models.Vehiculo, {
       foreignKey: 'vehiculo_id',
-      as: 'vehiculo',
+      as: 'vehiculo', // <-- AQUÍ: Debe decir exactamente 'vehiculo'
     });
 
-    // Relación 1 a N con DetalleOrdenes (se eliminan en cascada)
+    // 2. Relación con los detalles de la orden
     this.hasMany(models.DetalleOrden, {
       foreignKey: 'orden_id',
-      as: 'detalles',
-      onDelete: 'CASCADE',
+      as: 'detalles', // <-- AQUÍ: Debe decir exactamente 'detalles'
     });
   }
+
 
   static config(sequelize) {
     return {

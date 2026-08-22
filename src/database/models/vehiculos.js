@@ -42,20 +42,15 @@ const VehiculoSchema = {
   },
 };
 
-class Vehiculos extends Model {
+class Vehiculo extends Model {
   static associate(models) {
-    // Pertenece a un Cliente
+    // Relación con Cliente
     this.belongsTo(models.Cliente, {
       foreignKey: 'cliente_id',
-      as: 'cliente',
-    });
-
-    // Tiene muchas Ordenes de trabajo
-    this.hasMany(models.Orden, {
-      foreignKey: 'vehiculo_id',
-      as: 'ordenes',
+      as: 'cliente', // <-- AQUÍ: Debe decir exactamente 'cliente'
     });
   }
+
 
   static config(sequelize) {
     return {

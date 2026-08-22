@@ -45,18 +45,12 @@ export const DetalleOrdenesSchema = {
   },
 };
 
-export class DetalleOrden extends Model {
+class DetalleOrden extends Model {
   static associate(models) {
-    // Relación con Orden de Trabajo
-    this.belongsTo(models.Orden, {
-      foreignKey: 'orden_id',
-      as: 'orden',
-    });
-
-    // Relación con Catalogo (Producto / Servicio)
+    // Relación con Catálogo / Servicio
     this.belongsTo(models.Catalogo, {
       foreignKey: 'servicio_id',
-      as: 'servicio',
+      as: 'servicio', // <-- AQUÍ: Debe decir exactamente 'servicio'
     });
   }
 
