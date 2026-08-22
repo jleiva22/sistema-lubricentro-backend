@@ -6,14 +6,14 @@ import {Catalogo, CatalogoSchema} from './catalogo_servicios.js'
 import {DetalleOrden, DetalleOrdenesSchema} from './detalle_ordenes.js'
 import {Orden, OrdenSchema} from './ordenes_trabajo.js'
 import {Usuario, UsuarioSchema} from './usuarios.js'
-import {Vehiculos, VehiculoSchema} from './vehiculos.js'
+import {Vehiculo, VehiculoSchema} from './vehiculos.js'
 
 
 export function setupModels(sequelize){
 
     Usuario.init(UsuarioSchema, Usuario.config(sequelize));
     Cliente.init(ClienteSchema, Cliente.config(sequelize));
-    Vehiculos.init(VehiculoSchema, Vehiculos.config(sequelize));
+    Vehiculo.init(VehiculoSchema, Vehiculo.config(sequelize));
     Catalogo.init(CatalogoSchema, Catalogo.config(sequelize));
     Orden.init(OrdenSchema, Orden.config(sequelize));
     DetalleOrden.init(DetalleOrdenesSchema, DetalleOrden.config(sequelize));
@@ -26,12 +26,12 @@ export function setupModels(sequelize){
     Cliente.belongsTo(Usuario, { foreignKey: 'usuario_id', as: 'usuario' });
 
     // Clientes <-> Vehiculos (1 a N)
-    Cliente.hasMany(Vehiculos, { foreignKey: 'cliente_id', as: 'vehiculos', onDelete: 'RESTRICT' });
-    Vehiculos.belongsTo(Cliente, { foreignKey: 'cliente_id', as: 'cliente', onDelete: 'RESTRICT' });
+    Cliente.hasMany(Vehiculo, { foreignKey: 'cliente_id', as: 'vehiculos', onDelete: 'RESTRICT' });
+    Vehiculo.belongsTo(Cliente, { foreignKey: 'cliente_id', as: 'cliente', onDelete: 'RESTRICT' });
 
     // Vehiculos <-> Ordenes de Trabajo (1 a N)
-    Vehiculos.hasMany(Orden, { foreignKey: 'vehiculo_id', as: 'ordenes' });
-    Orden.belongsTo(Vehiculos, { foreignKey: 'vehiculo_id', as: 'vehiculo' });
+    Vehiculo.hasMany(Orden, { foreignKey: 'vehiculo_id', as: 'ordenes' });
+    Orden.belongsTo(Vehiculo, { foreignKey: 'vehiculo_id', as: 'vehiculo' });
 
     // Orden de Trabajo <-> DetalleOrden (1 a N, con eliminación en cascada)
     Orden.hasMany(DetalleOrden, { foreignKey: 'orden_id', as: 'detalles', onDelete: 'CASCADE' });
