@@ -9,8 +9,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
-  origin: true,
-  credentials: true,
+  origin: ['http://localhost:5173', 'sistema-lubricentro-production.up.railway.app'],
+  credentials: true
 }));
 app.use(express.json());
 app.use(cookieParser());
@@ -25,7 +25,7 @@ const connectWithRetry = async (retries = 20, delay = 5000) => {
     try {
       await sequelize.authenticate();
       console.log('✅ Conexión a MySQL establecida correctamente.');
-      
+
       await sequelize.sync({ alter: true, logging: false });
       console.log('✅ Modelos sincronizados con la DB.');
       break;
@@ -41,7 +41,7 @@ const connectWithRetry = async (retries = 20, delay = 5000) => {
   }
 };
 
-app.listen(PORT, async () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', async () => {
+  console.log(`🚀 Servidor corriendo en ${PORT}`);
   await connectWithRetry();
 });
