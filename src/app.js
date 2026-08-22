@@ -9,7 +9,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
-  origin: ['http://localhost:5173', 'sistema-lubricentro-production.up.railway.app'],
+  origin: ['http://localhost:5173', 'https://sistema-lubricentro-production.up.railway.app'],
   credentials: true
 }));
 app.use(express.json());
