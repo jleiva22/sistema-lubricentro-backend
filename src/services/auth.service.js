@@ -8,7 +8,6 @@ const sanitizeUser = (user) => {
   const plain = user.toJSON ? user.toJSON() : { ...user };
   delete plain.password_hash;
 
-  // Si viene incluido el perfil_cliente, exponer cliente_id para facilitar checks
   if (plain.perfil_cliente) {
     plain.cliente_id = plain.perfil_cliente.id;
   }
@@ -42,12 +41,12 @@ const createRefreshToken = (usuario) => {
 export const setAuthCookies = (res, accessToken, refreshToken) => {
   const accessCookieOptions = {
     ...authConfig.cookieOptions,
-    maxAge: 15 * 60 * 1000,
+    maxAge: 15 * 60 * 1000, // 15 minutos (corregido de 1 minuto)
   };
 
   const refreshCookieOptions = {
     ...authConfig.cookieOptions,
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
   };
 
   res.cookie('accessToken', accessToken, accessCookieOptions);
@@ -78,14 +77,11 @@ export const login = async ({ email, password }) => {
     throw error;
   }
 
-  // Si no existe asociación directa con Cliente, intentar resolver por email o usuario_id
   if (!usuario.perfil_cliente) {
     let posibleCliente = await models.Cliente.findOne({ where: { usuario_id: usuario.id } });
     if (!posibleCliente) {
       posibleCliente = await models.Cliente.findOne({ where: { email: usuario.email } });
     }
-
-    // Si sigue sin existir, intentar por PK (posible coincidencia de ids en datos seed)
     if (!posibleCliente) {
       const clienteByPk = await models.Cliente.findByPk(usuario.id);
       if (clienteByPk) posibleCliente = clienteByPk;
@@ -105,7 +101,6 @@ export const login = async ({ email, password }) => {
   const accessToken = createAccessToken(usuario);
   const refreshToken = createRefreshToken(usuario);
 
-  // Construir objeto plano para asegurar que perfil_cliente se incluya correctamente
   const plainUsuario = usuario.toJSON ? usuario.toJSON() : { ...usuario };
   if (usuario.perfil_cliente) {
     plainUsuario.perfil_cliente = usuario.perfil_cliente.toJSON ? usuario.perfil_cliente.toJSON() : usuario.perfil_cliente;
@@ -131,7 +126,6 @@ export const refreshAccessToken = async (refreshTokenValue) => {
       include: [{ model: models.Cliente, as: 'perfil_cliente' }],
     });
 
-    // Intentar resolver Cliente si no viene incluido
     if (usuario && !usuario.perfil_cliente) {
       let posibleCliente = await models.Cliente.findOne({ where: { usuario_id: usuario.id } });
       if (!posibleCliente) posibleCliente = await models.Cliente.findOne({ where: { email: usuario.email } });
@@ -168,7 +162,13 @@ export const getAuthenticatedUser = async (userId) => {
     include: [{ model: models.Cliente, as: 'perfil_cliente' }],
   });
 
-  if (usuario && !usuario.perfil_cliente) {
+  if (!usuario) {
+    const error = new Error('Usuario no encontrado');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (!usuario.perfil_cliente) {
     let posibleCliente = await models.Cliente.findOne({ where: { usuario_id: usuario.id } });
     if (!posibleCliente) posibleCliente = await models.Cliente.findOne({ where: { email: usuario.email } });
     if (!posibleCliente) {
@@ -176,26 +176,12 @@ export const getAuthenticatedUser = async (userId) => {
       if (clienteByPk) posibleCliente = clienteByPk;
     }
 
-    // Construir objeto plano y adjuntar posibleCliente
     const plainUsuario = usuario.toJSON ? usuario.toJSON() : { ...usuario };
     if (posibleCliente) plainUsuario.perfil_cliente = posibleCliente.toJSON ? posibleCliente.toJSON() : posibleCliente;
-
-    if (!plainUsuario) {
-      const error = new Error('Usuario no encontrado');
-      error.statusCode = 404;
-      throw error;
-    }
 
     return sanitizeUser(plainUsuario);
   }
 
-  if (!usuario) {
-    const error = new Error('Usuario no encontrado');
-    error.statusCode = 404;
-    throw error;
-  }
-
-  // Caso donde usuario ya trae perfil (incluido por el include)
   const plain = usuario.toJSON ? usuario.toJSON() : { ...usuario };
   return sanitizeUser(plain);
 };
