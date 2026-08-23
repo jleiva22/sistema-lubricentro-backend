@@ -21,7 +21,8 @@ router.get('/patente/:patente', authorizeRoles('administrador', 'mecanico', 'cli
 
 // Rutas por ID
 router.get('/:id', authorizeRoles('administrador', 'mecanico', 'cliente'), getVehiculoById);
-router.post('/', authorizeRoles('administrador', 'mecanico'), createVehiculo);
+// Permitir que clientes autenticados también creen vehículos en "Mis Vehículos"
+router.post('/', authorizeRoles('administrador', 'mecanico', 'cliente'), createVehiculo);
 router.put('/:id', authorizeRoles('administrador', 'mecanico'), updateVehiculo);
 router.delete('/:id', authorizeRoles('administrador'), deleteVehiculo);
 

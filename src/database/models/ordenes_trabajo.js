@@ -34,7 +34,7 @@ const OrdenSchema = {
   },
   kilometraje_ingreso: {
     type: DataTypes.INTEGER,
-    allowNull: true, // 💡 CAMBIO: Permitir null al agendar desde la web
+    allowNull: true, // 💡 Permitir null al agendar desde la web
   },
   proximo_cambio_km: {
     type: DataTypes.INTEGER,
@@ -45,9 +45,23 @@ const OrdenSchema = {
   observaciones_reparacion: {
     type: DataTypes.TEXT,
   },
+  // ── Nuevos campos (Tarea 4) ──
+  tipo_aceite: {
+    type: DataTypes.ENUM('mineral', 'semisintetico', 'sintetico'),
+    allowNull: true,
+  },
+  marca_aceite: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  tiempo_estimado: {
+    type: DataTypes.INTEGER, // minutos
+    allowNull: true,
+  },
+  // ── Fin nuevos campos ──
   estado: {
-    // 💡 CAMBIO: Se agrega 'agendada'
-    type: DataTypes.ENUM('agendada', 'recepcionado', 'en_proceso', 'completado', 'pagado', 'cancelado'),
+    // 💡 Se agrega 'solicitado' y 'agendada'
+    type: DataTypes.ENUM('solicitado', 'agendada', 'recepcionado', 'en_proceso', 'completado', 'pagado', 'cancelado'),
     defaultValue: 'recepcionado',
     allowNull: false,
   },

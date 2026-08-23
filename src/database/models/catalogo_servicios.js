@@ -27,7 +27,7 @@ const CatalogoSchema = {
   categoria: {
     type: DataTypes.STRING(50),
     allowNull: false,
-    defaultValue: 'motor',
+    defaultValue: 'Mantenimiento', // default category per spec
   },
   marca: {
     type: DataTypes.STRING(80),

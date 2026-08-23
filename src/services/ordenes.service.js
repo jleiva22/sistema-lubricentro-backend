@@ -3,9 +3,20 @@ import sequelize from '../libs/sequelize.js';
 
 const roundMoney = (value) => Number(Number(value || 0).toFixed(2));
 
+// ─── Transiciones de estado permitidas (Tarea 3) ───
+const ESTADO_TRANSITIONS = {
+  agendada:     ['recepcionado', 'cancelado'],
+  solicitado:   ['agendada', 'recepcionado', 'cancelado'],
+  recepcionado: ['en_proceso', 'cancelado'],
+  en_proceso:   ['completado', 'cancelado'],
+  completado:   ['pagado'],
+  pagado:       [],
+  cancelado:    [],
+};
+
 const buildOrderIncludes = () => [
   {
-    model: models.Vehiculo, // ✅ Corregido
+    model: models.Vehiculo,
     as: 'vehiculo',
     include: [{ model: models.Cliente, as: 'cliente' }],
   },
@@ -63,13 +74,17 @@ export const getById = async (id, user = null) => {
   return orden;
 };
 
-export const create = async (body) => {
+// 3. Crear orden (admin / mecánico — completa con kilometraje y diagnóstico)
+export const create = async (body, user = null) => {
   const {
     vehiculo_id,
     kilometraje_ingreso,
     fecha_programada,
     observaciones_fallas,
     observaciones_reparacion,
+    tipo_aceite,
+    marca_aceite,
+    tiempo_estimado,
     detalles = [],
   } = body;
 
@@ -81,12 +96,20 @@ export const create = async (body) => {
     throw new Error('Debes incluir al menos un servicio o revisión');
   }
 
-  const vehiculo = await models.Vehiculo.findByPk(vehiculo_id, { // ✅ Corregido
+  const vehiculo = await models.Vehiculo.findByPk(vehiculo_id, {
     include: [{ model: models.Cliente, as: 'cliente' }],
   });
 
   if (!vehiculo) {
     throw new Error(`El vehículo con ID ${vehiculo_id} no existe`);
+  }
+
+  // Seguridad: si es cliente, verificar que el vehículo le pertenece
+  if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
+    const clienteId = user.cliente_id || user.perfil_cliente?.id;
+    if (Number(vehiculo.cliente_id) !== Number(clienteId)) {
+      throw new Error('No tienes permisos para crear una orden con ese vehículo');
+    }
   }
 
   const transaction = await sequelize.transaction();
@@ -118,6 +141,11 @@ export const create = async (body) => {
     const iva = roundMoney(subtotal * 0.19);
     const total = roundMoney(subtotal + iva);
 
+    // Determinar estado según rol
+    const estadoInicial = user && (user.rol === 'cliente' || user.role === 'cliente')
+      ? 'solicitado'
+      : 'recepcionado';
+
     const nuevaOrden = await models.Orden.create({
       vehiculo_id,
       fecha_programada: fecha_programada || null,
@@ -125,10 +153,13 @@ export const create = async (body) => {
       proximo_cambio_km: body.proximo_cambio_km || null,
       observaciones_fallas: observaciones_fallas || null,
       observaciones_reparacion: observaciones_reparacion || null,
+      tipo_aceite: tipo_aceite || null,
+      marca_aceite: marca_aceite || null,
+      tiempo_estimado: tiempo_estimado || null,
       subtotal,
       iva,
       total,
-      estado: 'recepcionado',
+      estado: estadoInicial,
       pagado: false,
       boleta_emitida: false,
     }, { transaction });
@@ -158,6 +189,93 @@ export const create = async (body) => {
   }
 };
 
+// 3b. Crear solicitud/orden desde cliente autenticado (Tarea 3)
+export const createOrdenCliente = async (body, user) => {
+  const clienteId = user.cliente_id || user.perfil_cliente?.id;
+  if (!clienteId) {
+    throw new Error('Tu cuenta no tiene un perfil de cliente asociado');
+  }
+
+  const {
+    vehiculo_id,
+    fecha_programada,
+    observaciones_fallas,
+    servicio_ids = [],
+    tipo_aceite,
+    marca_aceite,
+  } = body;
+
+  if (!vehiculo_id) throw new Error('Debes seleccionar un vehículo');
+  if (!Array.isArray(servicio_ids) || servicio_ids.length === 0) {
+    throw new Error('Debes seleccionar al menos un servicio');
+  }
+
+  // Verificar que el vehículo pertenece al cliente
+  const vehiculo = await models.Vehiculo.findByPk(vehiculo_id, {
+    include: [{ model: models.Cliente, as: 'cliente' }],
+  });
+  if (!vehiculo) throw new Error('El vehículo no existe');
+  if (Number(vehiculo.cliente_id) !== Number(clienteId)) {
+    throw new Error('No tienes permisos para crear una orden con ese vehículo');
+  }
+
+  const transaction = await sequelize.transaction();
+
+  try {
+    let subtotal = 0;
+    const detallesProcesados = [];
+
+    for (const sId of servicio_ids) {
+      const servicio = await models.Catalogo.findByPk(sId, { transaction });
+      if (servicio) {
+        const precioUnitario = Number(servicio.precio_unitario || 0);
+        subtotal = roundMoney(subtotal + precioUnitario);
+        detallesProcesados.push({
+          servicio_id: servicio.id,
+          cantidad: 1,
+          precio_unitario: precioUnitario,
+          subtotal: precioUnitario,
+        });
+      }
+    }
+
+    const iva = roundMoney(subtotal * 0.19);
+    const total = roundMoney(subtotal + iva);
+
+    const nuevaOrden = await models.Orden.create({
+      vehiculo_id: vehiculo.id,
+      fecha_programada: fecha_programada || new Date(),
+      kilometraje_ingreso: Number(vehiculo.kilometraje_actual || 0),
+      observaciones_fallas: observaciones_fallas || 'Solicitud desde panel de cliente',
+      tipo_aceite: tipo_aceite || null,
+      marca_aceite: marca_aceite || null,
+      subtotal,
+      iva,
+      total,
+      estado: 'solicitado',
+      pagado: false,
+      boleta_emitida: false,
+    }, { transaction });
+
+    for (const detalle of detallesProcesados) {
+      await models.DetalleOrden.create({
+        orden_id: nuevaOrden.id,
+        servicio_id: detalle.servicio_id,
+        cantidad: detalle.cantidad,
+        precio_unitario: detalle.precio_unitario,
+        subtotal: detalle.subtotal,
+      }, { transaction });
+    }
+
+    await transaction.commit();
+    return await getById(nuevaOrden.id);
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+};
+
+// 4. Reserva express (desde Landing Page / público)
 export const createReservaExpress = async (body) => {
   const {
     cliente_id, // 👈 Se agrega para usuarios logueados
@@ -172,6 +290,8 @@ export const createReservaExpress = async (body) => {
     fecha_programada,
     servicio_ids = [],
     observaciones_fallas = 'Reserva desde sitio web',
+    tipo_aceite,
+    marca_aceite,
   } = body;
 
   // Validación rápida
@@ -259,10 +379,12 @@ export const createReservaExpress = async (body) => {
       fecha_programada: fecha_programada || new Date(),
       kilometraje_ingreso: Number(vehiculo.kilometraje_actual || 0),
       observaciones_fallas,
+      tipo_aceite: tipo_aceite || null,
+      marca_aceite: marca_aceite || null,
       subtotal,
       iva,
       total,
-      estado: 'agendada', // 👈 CAMBIO: Se define como agendada
+      estado: 'agendada',
       pagado: false,
       boleta_emitida: false,
     }, { transaction });
@@ -285,11 +407,68 @@ export const createReservaExpress = async (body) => {
   }
 };
 
+// 5. Actualizar estado con validación de transiciones (Tarea 3)
+export const updateEstado = async (id, nuevoEstado, user = null) => {
+  const orden = await models.Orden.findByPk(id, {
+    include: buildOrderIncludes(),
+  });
+
+  if (!orden) throw new Error('La orden de trabajo no existe');
+
+  const estadoActual = orden.estado;
+  const transicionesPermitidas = ESTADO_TRANSITIONS[estadoActual];
+
+  if (!transicionesPermitidas || !transicionesPermitidas.includes(nuevoEstado)) {
+    throw new Error(
+      `No se puede cambiar de "${estadoActual}" a "${nuevoEstado}". ` +
+      `Transiciones válidas: ${(transicionesPermitidas || []).join(', ') || 'ninguna'}`
+    );
+  }
+
+  // Solo mecánico/admin pueden completar o avanzar órdenes
+  if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
+    if (!['cancelado'].includes(nuevoEstado)) {
+      throw new Error('Solo mecánico o administrador puede cambiar a este estado');
+    }
+  }
+
+  const updateData = { estado: nuevoEstado };
+
+  // Si se marca como completado, registrar fecha de finalización
+  if (nuevoEstado === 'completado') {
+    updateData.fecha_finalizacion = new Date();
+  }
+
+  await orden.update(updateData);
+  return await getById(id);
+};
+
+// 6. Marcar como pagada (Tarea 3 / 5)
+export const marcarComoPagada = async (id) => {
+  const orden = await models.Orden.findByPk(id, {
+    include: buildOrderIncludes(),
+  });
+
+  if (!orden) throw new Error('La orden de trabajo no existe');
+
+  if (orden.estado !== 'completado' && orden.estado !== 'pagado') {
+    throw new Error('Solo se pueden pagar órdenes con estado "completado"');
+  }
+
+  await orden.update({
+    pagado: true,
+    estado: 'pagado',
+  });
+
+  return await getById(id);
+};
+
+// 7. Obtener boleta de una orden
 export const getBoletaById = async (id, user = null) => {
   const orden = await models.Orden.findByPk(id, {
     include: [
       {
-        model: models.Vehiculo, // ✅ Corregido
+        model: models.Vehiculo,
         as: 'vehiculo',
         include: [{ model: models.Cliente, as: 'cliente' }],
       },
@@ -329,12 +508,15 @@ export const getBoletaById = async (id, user = null) => {
       id: orden.id,
       fecha_ingreso: orden.fecha_ingreso,
       fecha_programada: orden.fecha_programada,
+      fecha_finalizacion: orden.fecha_finalizacion,
       estado: orden.estado,
       pagado: orden.pagado,
       subtotal: Number(orden.subtotal),
       iva: Number(orden.iva),
       total: Number(orden.total),
       observaciones_fallas: orden.observaciones_fallas,
+      tipo_aceite: orden.tipo_aceite,
+      marca_aceite: orden.marca_aceite,
     },
     servicios: orden.detalles.map((detalle) => ({
       id: detalle.id,
@@ -360,7 +542,7 @@ const orderVehicleData = (vehiculo) => {
   };
 };
 
-// 6. Eliminar Orden
+// 8. Eliminar Orden
 export const remove = async (id) => {
   const orden = await models.Orden.findByPk(id, {
     include: [{ model: models.DetalleOrden, as: 'detalles' }],

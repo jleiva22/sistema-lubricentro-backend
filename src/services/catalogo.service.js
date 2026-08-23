@@ -26,7 +26,7 @@ export const create = async (body) => {
     nombre: body.nombre,
     descripcion: body.descripcion || '',
     tipo: body.tipo || 'servicio',
-    categoria: body.categoria || 'motor',
+    categoria: body.categoria || 'Mantenimiento',
     marca: body.marca || null,
     precio_unitario: Number(body.precio_unitario || 0),
     stock_actual: Number(body.stock_actual || 0),
