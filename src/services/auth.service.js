@@ -40,21 +40,18 @@ const createRefreshToken = (usuario) => {
 };
 
 export const setAuthCookies = (res, accessToken, refreshToken) => {
-  res.cookie('accessToken', accessToken, {
-    // ...authConfig.cookieOptions, <-- Puedes mantener esto si quieres, pero agrega lo siguiente:
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  const accessCookieOptions = {
+    ...authConfig.cookieOptions,
     maxAge: 15 * 60 * 1000,
-  });
+  };
 
-  res.cookie('refreshToken', refreshToken, {
-    // ...authConfig.cookieOptions,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  const refreshCookieOptions = {
+    ...authConfig.cookieOptions,
     maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  };
+
+  res.cookie('accessToken', accessToken, accessCookieOptions);
+  res.cookie('refreshToken', refreshToken, refreshCookieOptions);
 };
 
 export const clearAuthCookies = (res) => {
