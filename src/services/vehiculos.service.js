@@ -56,36 +56,57 @@ export const create = async (data, user = null) => {
 
   if (!patente) throw new Error('La patente es obligatoria');
 
-  // ✅ Tarea 1: Si el usuario es cliente, forzar cliente_id desde req.user (anti-spoofing)
+  // ✅ Si el usuario es cliente, resolver dinámicamente su cliente_id
   if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
-    const userClienteId = user.cliente_id || user.perfil_cliente?.id;
+    const userId = user.id || user.sub;
+    let userClienteId = user.cliente_id || user.perfil_cliente?.id;
+
+    // Si no viene en el token/req.user, lo buscamos o creamos en la BD
+    if (!userClienteId && userId) {
+      let cliente = await models.Cliente.findOne({ where: { usuario_id: userId } });
+
+      if (!cliente) {
+        // Buscar por email si aún no tiene usuario_id vinculado
+        cliente = await models.Cliente.findOne({ where: { email: user.email } });
+        if (cliente) {
+          await cliente.update({ usuario_id: userId });
+        } else {
+          // Auto-crear perfil de cliente si no existía
+          cliente = await models.Cliente.create({
+            usuario_id: userId,
+            nombre: user.nombre || 'Cliente',
+            apellido: user.apellido || '',
+            email: user.email,
+          });
+        }
+      }
+      userClienteId = cliente.id;
+    }
+
     if (!userClienteId) {
       throw new Error('Tu cuenta no tiene un perfil de cliente asociado. Contacta al administrador.');
     }
-    // Forzar: ignorar cualquier cliente_id que mande el front
+
+    // Forzar: ignorar cualquier cliente_id enviado por el front
     cliente_id = userClienteId;
   }
 
-  // ✅ Tarea 1: Si admin/mecánico pasa un cliente_id, validar que exista
+  // ✅ Validar cliente si es admin/mecánico
   if (cliente_id) {
     const clienteExiste = await models.Cliente.findByPk(cliente_id);
     if (!clienteExiste) {
       throw new Error(`El cliente con ID ${cliente_id} no existe`);
     }
   } else {
-    // Valor por defecto si no viene especificado y no es cliente
     cliente_id = 1;
   }
 
   const cleanPatente = patente.toUpperCase().trim();
-
   let vehiculo = await models.Vehiculo.findOne({ where: { patente: cleanPatente } });
 
   if (vehiculo) {
-    // Si ya existe y el usuario es cliente, verificar que le pertenece
     if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
-      const userClienteId = user.cliente_id || user.perfil_cliente?.id;
-      if (Number(vehiculo.cliente_id) !== Number(userClienteId)) {
+      if (Number(vehiculo.cliente_id) !== Number(cliente_id)) {
         throw new Error('Esta patente ya está registrada bajo otro cliente');
       }
     }
