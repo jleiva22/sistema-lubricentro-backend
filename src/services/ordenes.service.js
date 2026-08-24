@@ -72,6 +72,7 @@ export const getById = async (id, user = null) => {
 };
 
 // 3. Crear orden (admin / mecánico)
+// 3. Crear orden (admin / mecánico)
 export const create = async (body, user = null) => {
   const {
     vehiculo_id,
@@ -107,6 +108,7 @@ export const create = async (body, user = null) => {
   }
 
   const transaction = await sequelize.transaction();
+  let createdId = null;
 
   try {
     let subtotal = 0;
@@ -155,6 +157,8 @@ export const create = async (body, user = null) => {
       boleta_emitida: false,
     }, { transaction });
 
+    createdId = nuevaOrden.id;
+
     for (const detalle of detallesProcesados) {
       await models.DetalleOrden.create({
         orden_id: nuevaOrden.id,
@@ -173,11 +177,14 @@ export const create = async (body, user = null) => {
     );
 
     await transaction.commit();
-    return await getById(nuevaOrden.id);
   } catch (error) {
-    await transaction.rollback();
+    if (transaction && !transaction.finished) {
+      await transaction.rollback();
+    }
     throw error;
   }
+
+  return await getById(createdId);
 };
 
 // 3b. Crear solicitud/orden desde cliente autenticado
@@ -208,6 +215,7 @@ export const createOrdenCliente = async (body, user) => {
   }
 
   const transaction = await sequelize.transaction();
+  let createdId = null;
 
   try {
     let subtotal = 0;
@@ -243,6 +251,8 @@ export const createOrdenCliente = async (body, user) => {
       boleta_emitida: false,
     }, { transaction });
 
+    createdId = nuevaOrden.id;
+
     for (const detalle of detallesProcesados) {
       await models.DetalleOrden.create({
         orden_id: nuevaOrden.id,
@@ -254,11 +264,14 @@ export const createOrdenCliente = async (body, user) => {
     }
 
     await transaction.commit();
-    return await getById(nuevaOrden.id);
   } catch (error) {
-    await transaction.rollback();
+    if (transaction && !transaction.finished) {
+      await transaction.rollback();
+    }
     throw error;
   }
+
+  return await getById(createdId);
 };
 
 // 4. Reserva express (desde Landing Page / público)
@@ -282,6 +295,7 @@ export const createReservaExpress = async (body) => {
   }
 
   const transaction = await sequelize.transaction();
+  let createdId = null;
 
   try {
     let vehiculo = null;
@@ -365,6 +379,8 @@ export const createReservaExpress = async (body) => {
       boleta_emitida: false,
     }, { transaction });
 
+    createdId = nuevaOrden.id;
+
     for (const detalle of detallesProcesados) {
       await models.DetalleOrden.create({
         orden_id: nuevaOrden.id,
@@ -376,11 +392,14 @@ export const createReservaExpress = async (body) => {
     }
 
     await transaction.commit();
-    return await getById(nuevaOrden.id);
   } catch (error) {
-    await transaction.rollback();
+    if (transaction && !transaction.finished) {
+      await transaction.rollback();
+    }
     throw error;
   }
+
+  return await getById(createdId);
 };
 
 // 5. Actualizar estado
