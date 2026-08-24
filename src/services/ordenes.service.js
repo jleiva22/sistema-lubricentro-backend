@@ -5,13 +5,13 @@ const roundMoney = (value) => Number(Number(value || 0).toFixed(2));
 
 // ─── Transiciones de estado permitidas (Tarea 3) ───
 const ESTADO_TRANSITIONS = {
-  agendada:     ['recepcionado', 'cancelado'],
-  solicitado:   ['agendada', 'recepcionado', 'cancelado'],
+  agendada: ['recepcionado', 'cancelado'],
+  solicitado: ['agendada', 'recepcionado', 'cancelado'],
   recepcionado: ['en_proceso', 'cancelado'],
-  en_proceso:   ['completado', 'cancelado'],
-  completado:   ['pagado'],
-  pagado:       [],
-  cancelado:    [],
+  en_proceso: ['completado', 'cancelado'],
+  completado: ['pagado'],
+  pagado: [],
+  cancelado: [],
 };
 
 const buildOrderIncludes = () => [
@@ -29,11 +29,8 @@ const buildOrderIncludes = () => [
 
 // 1. Obtener todas las órdenes de trabajo
 export const getAll = async (user = null) => {
-  const where = {};
-  // Si el usuario es cliente, filtrar sólo sus órdenes a través del cliente asociado al vehículo
   if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
     const clienteId = user.cliente_id || user.perfil_cliente?.id;
-    // Hacemos join vía vehiculo.cliente_id añadiendo condición en include mediante where en asociación
     return await models.Orden.findAll({
       include: buildOrderIncludes().map((inc) => {
         if (inc.as === 'vehiculo') {
@@ -74,7 +71,7 @@ export const getById = async (id, user = null) => {
   return orden;
 };
 
-// 3. Crear orden (admin / mecánico — completa con kilometraje y diagnóstico)
+// 3. Crear orden (admin / mecánico)
 export const create = async (body, user = null) => {
   const {
     vehiculo_id,
@@ -82,8 +79,6 @@ export const create = async (body, user = null) => {
     fecha_programada,
     observaciones_fallas,
     observaciones_reparacion,
-    tipo_aceite,
-    marca_aceite,
     tiempo_estimado,
     detalles = [],
   } = body;
@@ -104,7 +99,6 @@ export const create = async (body, user = null) => {
     throw new Error(`El vehículo con ID ${vehiculo_id} no existe`);
   }
 
-  // Seguridad: si es cliente, verificar que el vehículo le pertenece
   if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
     const clienteId = user.cliente_id || user.perfil_cliente?.id;
     if (Number(vehiculo.cliente_id) !== Number(clienteId)) {
@@ -141,7 +135,6 @@ export const create = async (body, user = null) => {
     const iva = roundMoney(subtotal * 0.19);
     const total = roundMoney(subtotal + iva);
 
-    // Determinar estado según rol
     const estadoInicial = user && (user.rol === 'cliente' || user.role === 'cliente')
       ? 'solicitado'
       : 'recepcionado';
@@ -153,8 +146,6 @@ export const create = async (body, user = null) => {
       proximo_cambio_km: body.proximo_cambio_km || null,
       observaciones_fallas: observaciones_fallas || null,
       observaciones_reparacion: observaciones_reparacion || null,
-      tipo_aceite: tipo_aceite || null,
-      marca_aceite: marca_aceite || null,
       tiempo_estimado: tiempo_estimado || null,
       subtotal,
       iva,
@@ -189,7 +180,7 @@ export const create = async (body, user = null) => {
   }
 };
 
-// 3b. Crear solicitud/orden desde cliente autenticado (Tarea 3)
+// 3b. Crear solicitud/orden desde cliente autenticado
 export const createOrdenCliente = async (body, user) => {
   const clienteId = user.cliente_id || user.perfil_cliente?.id;
   if (!clienteId) {
@@ -201,8 +192,6 @@ export const createOrdenCliente = async (body, user) => {
     fecha_programada,
     observaciones_fallas,
     servicio_ids = [],
-    tipo_aceite,
-    marca_aceite,
   } = body;
 
   if (!vehiculo_id) throw new Error('Debes seleccionar un vehículo');
@@ -210,7 +199,6 @@ export const createOrdenCliente = async (body, user) => {
     throw new Error('Debes seleccionar al menos un servicio');
   }
 
-  // Verificar que el vehículo pertenece al cliente
   const vehiculo = await models.Vehiculo.findByPk(vehiculo_id, {
     include: [{ model: models.Cliente, as: 'cliente' }],
   });
@@ -247,8 +235,6 @@ export const createOrdenCliente = async (body, user) => {
       fecha_programada: fecha_programada || new Date(),
       kilometraje_ingreso: Number(vehiculo.kilometraje_actual || 0),
       observaciones_fallas: observaciones_fallas || 'Solicitud desde panel de cliente',
-      tipo_aceite: tipo_aceite || null,
-      marca_aceite: marca_aceite || null,
       subtotal,
       iva,
       total,
@@ -278,8 +264,7 @@ export const createOrdenCliente = async (body, user) => {
 // 4. Reserva express (desde Landing Page / público)
 export const createReservaExpress = async (body) => {
   const {
-    cliente_id, // 👈 Se agrega para usuarios logueados
-    vehiculo_id, // 👈 Se agrega para usuarios logueados
+    vehiculo_id,
     nombre,
     apellido = '',
     email,
@@ -290,11 +275,8 @@ export const createReservaExpress = async (body) => {
     fecha_programada,
     servicio_ids = [],
     observaciones_fallas = 'Reserva desde sitio web',
-    tipo_aceite,
-    marca_aceite,
   } = body;
 
-  // Validación rápida
   if (!vehiculo_id && !patente) {
     throw new Error('Debes seleccionar un vehículo o ingresar una patente');
   }
@@ -304,12 +286,10 @@ export const createReservaExpress = async (body) => {
   try {
     let vehiculo = null;
 
-    // 1. Si el usuario está logueado y envió un vehiculo_id
     if (vehiculo_id) {
       vehiculo = await models.Vehiculo.findByPk(vehiculo_id, { transaction });
       if (!vehiculo) throw new Error('El vehículo seleccionado no existe');
     } else {
-      // 2. Si es un invitado, buscar o crear cliente y vehículo
       let cliente = null;
       if (body.rut) {
         cliente = await models.Cliente.findOne({ where: { rut: body.rut }, transaction });
@@ -351,7 +331,6 @@ export const createReservaExpress = async (body) => {
       }
     }
 
-    // 3. Procesar Servicios
     let subtotal = 0;
     const detallesProcesados = [];
     const idsParaProcesar = Array.isArray(servicio_ids) && servicio_ids.length > 0 ? servicio_ids : [1];
@@ -373,14 +352,11 @@ export const createReservaExpress = async (body) => {
     const iva = roundMoney(subtotal * 0.19);
     const total = roundMoney(subtotal + iva);
 
-    // 4. Crear la Orden con estado 'agendada'
     const nuevaOrden = await models.Orden.create({
       vehiculo_id: vehiculo.id,
       fecha_programada: fecha_programada || new Date(),
       kilometraje_ingreso: Number(vehiculo.kilometraje_actual || 0),
       observaciones_fallas,
-      tipo_aceite: tipo_aceite || null,
-      marca_aceite: marca_aceite || null,
       subtotal,
       iva,
       total,
@@ -407,7 +383,7 @@ export const createReservaExpress = async (body) => {
   }
 };
 
-// 5. Actualizar estado con validación de transiciones (Tarea 3)
+// 5. Actualizar estado
 export const updateEstado = async (id, nuevoEstado, user = null) => {
   const orden = await models.Orden.findByPk(id, {
     include: buildOrderIncludes(),
@@ -425,7 +401,6 @@ export const updateEstado = async (id, nuevoEstado, user = null) => {
     );
   }
 
-  // Solo mecánico/admin pueden completar o avanzar órdenes
   if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
     if (!['cancelado'].includes(nuevoEstado)) {
       throw new Error('Solo mecánico o administrador puede cambiar a este estado');
@@ -434,7 +409,6 @@ export const updateEstado = async (id, nuevoEstado, user = null) => {
 
   const updateData = { estado: nuevoEstado };
 
-  // Si se marca como completado, registrar fecha de finalización
   if (nuevoEstado === 'completado') {
     updateData.fecha_finalizacion = new Date();
   }
@@ -443,7 +417,7 @@ export const updateEstado = async (id, nuevoEstado, user = null) => {
   return await getById(id);
 };
 
-// 6. Marcar como pagada (Tarea 3 / 5)
+// 6. Marcar como pagada
 export const marcarComoPagada = async (id) => {
   const orden = await models.Orden.findByPk(id, {
     include: buildOrderIncludes(),
@@ -515,8 +489,6 @@ export const getBoletaById = async (id, user = null) => {
       iva: Number(orden.iva),
       total: Number(orden.total),
       observaciones_fallas: orden.observaciones_fallas,
-      tipo_aceite: orden.tipo_aceite,
-      marca_aceite: orden.marca_aceite,
     },
     servicios: orden.detalles.map((detalle) => ({
       id: detalle.id,
