@@ -1,5 +1,7 @@
+import { models } from '../libs/sequelize.js';
 import * as authService from '../services/auth.service.js';
 import * as usuarioService from '../services/usuarios.service.js';
+
 
 export const login = async (req, res, next) => {
   try {
