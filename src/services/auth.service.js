@@ -113,39 +113,6 @@ export const login = async ({ email, password }) => {
   };
 };
 
-import { models } from '../libs/sequelize.js'; // Importar modelos
-
-export const register = async (req, res, next) => {
-  try {
-    const { nombre, apellido, email, password } = req.body;
-
-    const nuevoUsuario = await usuarioService.create({
-      nombre,
-      apellido: apellido || '',
-      email,
-      password,
-      rol: 'cliente',
-    });
-
-    // ✅ Crear automáticamente la ficha de Cliente asociada
-    await models.Cliente.create({
-      nombre,
-      apellido: apellido || '',
-      email,
-      usuario_id: nuevoUsuario.id,
-    });
-
-    const { usuario, accessToken, refreshToken } = await authService.login({ email, password });
-    authService.setAuthCookies(res, accessToken, refreshToken);
-
-    return res.status(201).json({
-      message: 'Registro exitoso e inicio de sesión automático',
-      usuario,
-    });
-  } catch (error) {
-    return next(error);
-  }
-};
 
 export const refreshAccessToken = async (refreshTokenValue) => {
   if (!refreshTokenValue) {

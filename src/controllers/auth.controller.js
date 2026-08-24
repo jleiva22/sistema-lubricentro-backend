@@ -18,12 +18,21 @@ export const login = async (req, res, next) => {
 export const register = async (req, res, next) => {
   try {
     const { nombre, apellido, email, password } = req.body;
-    await usuarioService.create({
+
+    const nuevoUsuario = await usuarioService.create({
       nombre,
       apellido: apellido || '',
       email,
       password,
       rol: 'cliente',
+    });
+
+    // ✅ Crear automáticamente la ficha de Cliente asociada
+    await models.Cliente.create({
+      nombre,
+      apellido: apellido || '',
+      email,
+      usuario_id: nuevoUsuario.id,
     });
 
     const { usuario, accessToken, refreshToken } = await authService.login({ email, password });
@@ -37,7 +46,6 @@ export const register = async (req, res, next) => {
     return next(error);
   }
 };
-
 export const refresh = async (req, res, next) => {
   try {
     const refreshTokenValue = req.cookies?.refreshToken || null;
