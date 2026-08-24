@@ -27,9 +27,14 @@ const buildIncludes = () => [
 
 export const getAll = async (user = null) => {
   const where = {};
+
   if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
-    const clienteId = user.cliente_id || user.perfil_cliente?.id;
-    where.cliente_id = clienteId;
+    // Busca el ID del cliente evaluando distintas propiedades de req.user
+    const clienteId = user.cliente_id || user.clienteId || user.perfil_cliente?.id || user.id;
+
+    if (clienteId) {
+      where.cliente_id = clienteId;
+    }
   }
 
   return await models.Boleta.findAll({
@@ -46,7 +51,7 @@ export const getById = async (id, user = null) => {
   }
 
   if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
-    const clienteId = user.cliente_id || user.clienteId || user.id;
+    const clienteId = user.cliente_id || user.clienteId || user.perfil_cliente?.id || user.id;
     if (Number(boleta.cliente_id) !== Number(clienteId)) {
       const err = new Error('No autorizado para ver esta boleta');
       err.statusCode = 403;
@@ -68,7 +73,7 @@ export const getByOrderId = async (ordenId, user = null) => {
   }
 
   if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
-    const clienteId = user.cliente_id || user.clienteId || user.id;
+    const clienteId = user.cliente_id || user.clienteId || user.perfil_cliente?.id || user.id;
     if (Number(boleta.cliente_id) !== Number(clienteId)) {
       const err = new Error('No autorizado para ver esta boleta');
       err.statusCode = 403;
@@ -83,7 +88,7 @@ export const createFromOrder = async (ordenId) => {
   const orden = await models.Orden.findByPk(ordenId, {
     include: [
       {
-        model: models.Vehiculo, // ✅ Corregido a singular
+        model: models.Vehiculo,
         as: 'vehiculo',
         include: [{ model: models.Cliente, as: 'cliente' }],
       },
@@ -104,6 +109,9 @@ export const createFromOrder = async (ordenId) => {
     return await getById(existente.id);
   }
 
+  // Obtener cliente_id desde vehículo o cliente directo
+  const clienteId = orden.vehiculo?.cliente_id || orden.vehiculo?.cliente?.id || orden.cliente_id;
+
   const transaction = await sequelize.transaction();
 
   try {
@@ -111,7 +119,7 @@ export const createFromOrder = async (ordenId) => {
     const boleta = await models.Boleta.create(
       {
         orden_id: orden.id,
-        cliente_id: orden.vehiculo?.cliente_id || orden.vehiculo?.cliente?.id,
+        cliente_id: clienteId,
         numero_boleta: numeroBoleta,
         fecha_emision: new Date(),
         nombre_empresa: 'Lubricentro',
@@ -127,18 +135,20 @@ export const createFromOrder = async (ordenId) => {
       { transaction }
     );
 
-    for (const detalle of orden.detalles) {
-      await models.BoletaDetalle.create(
-        {
-          boleta_id: boleta.id,
-          servicio_id: detalle.servicio_id,
-          nombre_servicio: detalle.servicio?.nombre || 'Servicio',
-          cantidad: detalle.cantidad,
-          precio_unitario: detalle.precio_unitario,
-          subtotal: detalle.subtotal,
-        },
-        { transaction }
-      );
+    if (orden.detalles && orden.detalles.length > 0) {
+      for (const detalle of orden.detalles) {
+        await models.BoletaDetalle.create(
+          {
+            boleta_id: boleta.id,
+            servicio_id: detalle.servicio_id,
+            nombre_servicio: detalle.servicio?.nombre || 'Servicio',
+            cantidad: detalle.cantidad,
+            precio_unitario: detalle.precio_unitario,
+            subtotal: detalle.subtotal,
+          },
+          { transaction }
+        );
+      }
     }
 
     await models.Orden.update(
@@ -153,7 +163,6 @@ export const createFromOrder = async (ordenId) => {
     throw error;
   }
 };
-
 
 export const remove = async (id) => {
   const boleta = await models.Boleta.findByPk(id);

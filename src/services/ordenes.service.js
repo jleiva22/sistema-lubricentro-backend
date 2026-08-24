@@ -1,5 +1,6 @@
 import { models } from '../libs/sequelize.js';
 import sequelize from '../libs/sequelize.js';
+import * as boletasService from './boletas.service.js'
 
 const roundMoney = (value) => Number(Number(value || 0).toFixed(2));
 
@@ -403,37 +404,26 @@ export const createReservaExpress = async (body) => {
 };
 
 // 5. Actualizar estado
-export const updateEstado = async (id, nuevoEstado, user = null) => {
-  const orden = await models.Orden.findByPk(id, {
-    include: buildOrderIncludes(),
-  });
+export const updateEstado = async (id, estado) => {
+  const orden = await models.Orden.findByPk(id);
+  if (!orden) throw new Error('Orden no encontrada');
 
-  if (!orden) throw new Error('La orden de trabajo no existe');
-
-  const estadoActual = orden.estado;
-  const transicionesPermitidas = ESTADO_TRANSITIONS[estadoActual];
-
-  if (!transicionesPermitidas || !transicionesPermitidas.includes(nuevoEstado)) {
-    throw new Error(
-      `No se puede cambiar de "${estadoActual}" a "${nuevoEstado}". ` +
-      `Transiciones válidas: ${(transicionesPermitidas || []).join(', ') || 'ninguna'}`
-    );
+  orden.estado = estado;
+  if (estado === 'completado' || estado === 'pagado') {
+    orden.pagado = true;
   }
+  await orden.save();
 
-  if (user && (user.rol === 'cliente' || user.role === 'cliente')) {
-    if (!['cancelado'].includes(nuevoEstado)) {
-      throw new Error('Solo mecánico o administrador puede cambiar a este estado');
+  // Generar la boleta automáticamente si no ha sido emitida
+  if ((estado === 'completado' || estado === 'pagado') && !orden.boleta_emitida) {
+    try {
+      await boletasService.createFromOrder(orden.id);
+    } catch (err) {
+      console.error(`Error al generar boleta automática para orden ${orden.id}:`, err);
     }
   }
 
-  const updateData = { estado: nuevoEstado };
-
-  if (nuevoEstado === 'completado') {
-    updateData.fecha_finalizacion = new Date();
-  }
-
-  await orden.update(updateData);
-  return await getById(id);
+  return orden;
 };
 
 // 6. Marcar como pagada
