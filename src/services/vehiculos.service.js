@@ -72,11 +72,13 @@ export const create = async (data, user = null) => {
           await cliente.update({ usuario_id: userId });
         } else {
           // Auto-crear perfil de cliente si no existía
-          cliente = await models.Cliente.create({
-            usuario_id: userId,
-            nombre: user.nombre || 'Cliente',
-            apellido: user.apellido || '',
-            email: user.email,
+          // Auto-crear perfil de cliente si no existía
+        cliente = await models.Cliente.create({
+          usuario_id: userId,
+          nombre: user.nombre || 'Cliente',
+          apellido: user.apellido || '',
+          email: user.email,
+          rut: user.rut || '11111111-1', // 👈 Incluir la propiedad rut
           });
         }
       }

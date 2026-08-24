@@ -19,7 +19,7 @@ export const login = async (req, res, next) => {
 
 export const register = async (req, res, next) => {
   try {
-    const { nombre, apellido, email, password } = req.body;
+    const { nombre, apellido, email, password, rut } = req.body; // 👈 1. Extraer rut
 
     const nuevoUsuario = await usuarioService.create({
       nombre,
@@ -29,11 +29,11 @@ export const register = async (req, res, next) => {
       rol: 'cliente',
     });
 
-    // ✅ Crear automáticamente la ficha de Cliente asociada
     await models.Cliente.create({
       nombre,
       apellido: apellido || '',
       email,
+      rut: rut || '11111111-1', // 👈 2. Pasar el RUT recibido o un fallback temporal
       usuario_id: nuevoUsuario.id,
     });
 
